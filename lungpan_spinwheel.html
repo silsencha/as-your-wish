@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>วงล้อสุ่มเมนู — ร้านลุงพันธุ์</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&family=Kanit:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f0e0b;
+    --surface: #1a1814;
+    --surface2: #242018;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.14);
+    --text: #f5f0e8;
+    --text2: #a09880;
+    --text3: #6a6050;
+    --accent: #e8a020;
+    --accent2: #c07010;
+    --accent-glow: rgba(232,160,32,0.18);
+    --red: #d84030;
+    --green: #2a9060;
+    --radius: 14px;
+    --radius-sm: 8px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { font-size: 16px; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Sarabun', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ---- noise texture overlay ---- */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none; z-index: 0;
+  }
+
+  .page { position: relative; z-index: 1; max-width: 900px; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+
+  /* ---- Header ---- */
+  .header { text-align: center; margin-bottom: 2.5rem; }
+  .shop-tag {
+    display: inline-block;
+    background: var(--accent-glow);
+    border: 0.5px solid rgba(232,160,32,0.35);
+    color: var(--accent);
+    font-family: 'Kanit', sans-serif;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 4px 14px;
+    border-radius: 999px;
+    margin-bottom: 1rem;
+  }
+  h1 {
+    font-family: 'Kanit', sans-serif;
+    font-size: clamp(26px, 5vw, 42px);
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+    color: var(--text);
+    margin-bottom: 0.5rem;
+  }
+  h1 span { color: var(--accent); }
+  .header-sub { font-size: 14px; color: var(--text2); }
+
+  /* ---- Layout ---- */
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 1.5rem;
+    align-items: start;
+  }
+  @media (max-width: 720px) {
+    .main-grid { grid-template-columns: 1fr; }
+    .wheel-col { order: -1; }
+  }
+
+  /* ---- Category Panel ---- */
+  .panel {
+    background: var(--surface);
+    border: 0.5px solid var(--border2);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .panel-head {
+    padding: 1rem 1.25rem;
+    border-bottom: 0.5px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .panel-title {
+    font-family: 'Kanit', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text2);
+  }
+  .toggle-all {
+    font-size: 12px;
+    color: var(--accent);
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: 'Sarabun', sans-serif;
+    padding: 0;
+    transition: opacity 0.15s;
+  }
+  .toggle-all:hover { opacity: 0.75; }
+
+  .cat-list { padding: 0.75rem; display: flex; flex-direction: column; gap: 4px; }
+
+  .cat-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: background 0.15s;
+    user-select: none;
+    border: 0.5px solid transparent;
+  }
+  .cat-row:hover { background: var(--surface2); }
+  .cat-row.active { background: var(--surface2); border-color: var(--border); }
+
+  .cat-dot {
+    width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+    transition: opacity 0.2s;
+  }
+  .cat-row:not(.active) .cat-dot { opacity: 0.25; }
+
+  .cat-name { flex: 1; font-size: 14px; font-weight: 500; transition: color 0.2s; }
+  .cat-row:not(.active) .cat-name { color: var(--text3); }
+
+  .cat-count {
+    font-size: 11px; color: var(--text3);
+    background: var(--bg);
+    padding: 2px 7px;
+    border-radius: 999px;
+    border: 0.5px solid var(--border);
+    font-variant-numeric: tabular-nums;
+  }
+  .cat-row.active .cat-count { color: var(--text2); }
+
+  .cat-check { width: 16px; height: 16px; flex-shrink: 0; }
+  .cat-check circle { fill: none; stroke: var(--border2); stroke-width: 1.5; transition: all 0.2s; }
+  .cat-check path { stroke: var(--accent); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; fill: none; opacity: 0; transition: opacity 0.2s; }
+  .cat-row.active .cat-check circle { fill: var(--accent); stroke: var(--accent); }
+  .cat-row.active .cat-check path { opacity: 1; stroke: #0f0e0b; }
+
+  /* ---- Shuffle Button ---- */
+  .shuffle-btn {
+    width: 100%; margin: 0.75rem 0 0;
+    padding: 11px;
+    background: var(--surface2);
+    border: 0.5px solid var(--border2);
+    border-radius: var(--radius-sm);
+    color: var(--text2);
+    font-family: 'Sarabun', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 7px;
+    transition: all 0.15s;
+  }
+  .shuffle-btn:hover { background: var(--surface); color: var(--text); border-color: var(--border2); }
+  .shuffle-btn svg { width: 15px; height: 15px; }
+
+  .shuffle-btn-cross {
+    margin-top: 6px;
+    border-color: rgba(232,160,32,0.2);
+    color: var(--accent);
+    background: rgba(232,160,32,0.06);
+  }
+  .shuffle-btn-cross:hover { background: rgba(232,160,32,0.13); color: var(--accent); border-color: rgba(232,160,32,0.4); }
+
+  /* cross-shuffle toast */
+  .toast {
+    position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%) translateY(12px);
+    background: var(--surface);
+    border: 0.5px solid rgba(232,160,32,0.35);
+    color: var(--text2);
+    font-size: 13px;
+    padding: 8px 18px;
+    border-radius: 999px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s, transform 0.25s;
+    white-space: nowrap;
+    z-index: 999;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ---- Wheel Column ---- */
+  .wheel-col { display: flex; flex-direction: column; align-items: center; gap: 1.25rem; }
+
+  .wheel-wrap {
+    position: relative;
+    width: 320px; height: 320px;
+    filter: drop-shadow(0 8px 40px rgba(232,160,32,0.12));
+  }
+  canvas { display: block; border-radius: 50%; }
+
+  .wheel-ring {
+    position: absolute; inset: -8px;
+    border-radius: 50%;
+    border: 2px solid rgba(232,160,32,0.2);
+    pointer-events: none;
+  }
+  .wheel-ring::before {
+    content: '';
+    position: absolute; inset: 4px;
+    border-radius: 50%;
+    border: 0.5px solid rgba(232,160,32,0.1);
+  }
+
+  .pointer-wrap {
+    position: absolute; top: -22px; left: 50%; transform: translateX(-50%);
+    display: flex; flex-direction: column; align-items: center;
+    z-index: 10;
+  }
+  .pointer-body {
+    width: 16px; height: 32px;
+    background: linear-gradient(180deg, #f5f0e8, #c0b898);
+    clip-path: polygon(50% 100%, 0 0, 100% 0);
+    border-radius: 2px 2px 0 0;
+    filter: drop-shadow(0 2px 6px rgba(0,0,0,0.5));
+  }
+
+  .center-hub {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 52px; height: 52px;
+    border-radius: 50%;
+    background: var(--bg);
+    border: 2px solid rgba(232,160,32,0.35);
+    cursor: pointer;
+    z-index: 10;
+    display: flex; align-items: center; justify-content: center;
+    transition: transform 0.12s, border-color 0.15s;
+    box-shadow: 0 0 0 4px var(--bg);
+  }
+  .center-hub:hover { transform: translate(-50%, -50%) scale(1.1); border-color: var(--accent); }
+  .center-hub:active { transform: translate(-50%, -50%) scale(0.95); }
+  .center-hub svg { width: 22px; height: 22px; fill: var(--accent); }
+
+  /* ---- Spin Button ---- */
+  .spin-btn {
+    width: 100%; max-width: 320px;
+    padding: 15px 32px;
+    background: var(--accent);
+    color: #0f0e0b;
+    border: none;
+    border-radius: var(--radius);
+    font-family: 'Kanit', sans-serif;
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    transition: all 0.15s;
+    box-shadow: 0 4px 20px rgba(232,160,32,0.3);
+  }
+  .spin-btn:hover:not(:disabled) {
+    background: #f0b030;
+    box-shadow: 0 6px 28px rgba(232,160,32,0.45);
+    transform: translateY(-1px);
+  }
+  .spin-btn:active:not(:disabled) { transform: translateY(0) scale(0.98); }
+  .spin-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+
+  /* ---- Result Card ---- */
+  .result-card {
+    width: 100%; max-width: 320px;
+    background: var(--surface);
+    border: 0.5px solid var(--border2);
+    border-radius: var(--radius);
+    padding: 1.1rem 1.25rem;
+    min-height: 76px;
+    display: flex; align-items: center; justify-content: center;
+    text-align: center;
+    transition: border-color 0.3s;
+    overflow: hidden;
+  }
+  .result-card.has-result {
+    border-color: rgba(232,160,32,0.35);
+    box-shadow: 0 0 0 1px rgba(232,160,32,0.08) inset;
+  }
+  .result-idle { color: var(--text3); font-size: 13px; }
+  .result-label { font-size: 11px; color: var(--accent); font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 5px; }
+  .result-name { font-family: 'Kanit', sans-serif; font-size: 17px; font-weight: 600; color: var(--text); line-height: 1.3; margin-bottom: 4px; }
+  .result-cat { font-size: 12px; color: var(--text3); margin-bottom: 3px; }
+  .result-price {
+    display: inline-block;
+    background: var(--accent-glow);
+    border: 0.5px solid rgba(232,160,32,0.3);
+    color: var(--accent);
+    font-size: 13px; font-weight: 600;
+    padding: 3px 12px; border-radius: 999px;
+    margin-top: 4px;
+  }
+
+  /* ---- Count pill ---- */
+  .count-pill {
+    font-size: 12px; color: var(--text3); text-align: center;
+  }
+  .count-pill strong { color: var(--text2); }
+
+  /* ---- Footer ---- */
+  .footer {
+    margin-top: 3rem;
+    text-align: center;
+    font-size: 12px;
+    color: var(--text3);
+    border-top: 0.5px solid var(--border);
+    padding-top: 1.5rem;
+  }
+  .footer a { color: var(--text2); text-decoration: none; }
+
+  /* ---- Animations ---- */
+  @keyframes pop-in {
+    from { opacity: 0; transform: scale(0.94) translateY(4px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  .result-card.has-result .result-inner { animation: pop-in 0.3s ease-out; }
+
+  @keyframes spin-icon {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
+  .spinning-icon { display: inline-block; animation: spin-icon 0.5s linear infinite; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="header">
+    <div class="shop-tag">ร้านอาหารตามสั่ง · เชียงใหม่</div>
+    <h1>วันนี้<span>กินอะไรดี?</span></h1>
+    <p class="header-sub">ร้านลุงพันธุ์ — หมุนวงล้อเพื่อสุ่มเมนู</p>
+  </div>
+
+  <div class="main-grid">
+
+    <!-- Left: Category panel -->
+    <div>
+      <div class="panel">
+        <div class="panel-head">
+          <span class="panel-title">หมวดหมู่เมนู</span>
+          <button class="toggle-all" id="toggleAll">เลือกทั้งหมด</button>
+        </div>
+        <div class="cat-list" id="catList"></div>
+      </div>
+
+      <button class="shuffle-btn" id="shuffleBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/>
+          <polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/>
+        </svg>
+        สุ่มเมนูภายในหมวด
+      </button>
+
+      <button class="shuffle-btn shuffle-btn-cross" id="crossShuffleBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 4h6v6H4z"/><path d="M14 4h6v6h-6z"/><path d="M4 14h6v6H4z"/><path d="M14 14h6v6h-6z"/>
+          <line x1="10" y1="7" x2="14" y2="7"/><line x1="10" y1="17" x2="14" y2="17"/>
+          <line x1="7" y1="10" x2="7" y2="14"/><line x1="17" y1="10" x2="17" y2="14"/>
+        </svg>
+        สุ่มข้ามหมวดหมู่
+      </button>
+    </div>
+
+    <!-- Right: Wheel -->
+    <div class="wheel-col">
+      <div class="wheel-wrap">
+        <div class="wheel-ring"></div>
+        <div class="pointer-wrap"><div class="pointer-body"></div></div>
+        <canvas id="wheel" width="320" height="320"></canvas>
+        <button class="center-hub" id="centerBtn" aria-label="หมุน">
+          <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 14.93V15a1 1 0 0 0-2 0v1.93A6 6 0 0 1 6.07 13H8a1 1 0 0 0 0-2H6.07A6 6 0 0 1 11 6.07V8a1 1 0 0 0 2 0V6.07A6 6 0 0 1 17.93 11H16a1 1 0 0 0 0 2h1.93A6 6 0 0 1 13 16.93z"/></svg>
+        </button>
+      </div>
+
+      <div class="count-pill" id="countPill">กำลังโหลด...</div>
+
+      <button class="spin-btn" id="spinBtn">🎯 หมุนเลย!</button>
+
+      <div class="result-card" id="resultCard">
+        <div class="result-idle">กดปุ่มหมุนเพื่อสุ่มเมนูของคุณ 🍽️</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <div class="footer">
+    ร้านลุงพันธุ์ &nbsp;·&nbsp; โทร <a href="tel:0980164188">098-016-4188</a> &nbsp;/&nbsp; <a href="tel:0895554166">089-555-4166</a>
+  </div>
+</div>
+
+<script>
+const allMenus = {
+  "ปลาทอด / หมูทอด": {
+    color: "#D85A30",
+    items: [
+      {n:"ปลาทอด หมูทอด ไก่ทอด ราดซอสเนย",p:35},
+      {n:"ปลาทอด หมูทอด ไก่ทอด ราดซอสมะเขือเทศ",p:35},
+      {n:"ปลาทอด หมูทอด ไก่ทอด ราดซอสสามรส",p:35},
+      {n:"ปลาทอด หมูทอด ไก่ทอด ราดน้ำแดง",p:35},
+    ]
+  },
+  "ผัดผัก": {
+    color: "#2a9060",
+    items: [
+      {n:"ผัดคะน้าหมู / ไก่ / หมูกรอบ",p:35},
+      {n:"ผัดผักกวางตุ้งหมู / ไก่ / หมูกรอบ",p:35},
+      {n:"ผัดกรวยวมหมู / ไก่ / หมูกรอบ",p:35},
+      {n:"ผัดเห็ดน้ำมันหอยหมู / ไก่ / หมูกรอบ",p:35},
+      {n:"ผัดเห็ดน้ำมันหอยตับหมู / ปลาหมึก",p:35},
+      {n:"ผัดเห็ดน้ำพริกเผาหมู / ไก่",p:35},
+      {n:"ผัดเห็ดน้ำพริกเผาหมูกรอบ / ปลาหมึก",p:35},
+      {n:"ผัดเห็ดน้ำมันหอยปลาทอด / ไก่ทอด",p:35},
+      {n:"ผัดเห็ดน้ำพริกเผาปลาทอด / ไก่ทอด",p:35},
+    ]
+  },
+  "พริกแกง / กะเพรา": {
+    color: "#7F77DD",
+    items: [
+      {n:"พริกแกงหมู / ไก่ / หมูกรอบ / ตับหมู",p:35},
+      {n:"พริกแกงเครื่องในไก่",p:35},
+      {n:"พริกแกงปลาหมึก / ไส้อ่อน",p:35},
+      {n:"พริกแกงทะเลรวม",p:40},
+      {n:"กะเพราหมูสับ / ไก่สับ",p:35},
+      {n:"กะเพราหมูมัก / ไก่มัก",p:35},
+      {n:"กะเพราหมูสับไข่เยี่ยวม้า",p:40},
+      {n:"กะเพราหมูสามชั้น / หมูกรอบ",p:40},
+      {n:"กะเพราทะเลรวม",p:40},
+      {n:"กะเพราปลาหมึก / ตับหมู / เครื่องในไก่",p:35},
+    ]
+  },
+  "ข้าวผัด": {
+    color: "#BA7517",
+    items: [
+      {n:"ข้าวผัดกุ้ง / ทะเลรวม",p:40},
+      {n:"ข้าวผัดหมู / ไก่",p:35},
+      {n:"ข้าวผัดหมูยอ / กุนเชียง / แหนม",p:35},
+      {n:"ข้าวผัดหมูกรอบ / ปลาหมึก",p:35},
+      {n:"ข้าวผัดพริกเผาหมู / ไก่",p:35},
+      {n:"ข้าวผัดพริกเผาหมูกรอบ / ปลาหมึก",p:35},
+      {n:"ข้าวผัดต้มยำหมู / ไก่ / หมูกรอบ",p:35},
+      {n:"ข้าวผัดโป๊แตก",p:40},
+      {n:"ข้าวผัดสับปะรด",p:35},
+      {n:"ข้าวผัดปลากระป๋อง",p:35},
+    ]
+  },
+  "สุกี้ / เส้น": {
+    color: "#378ADD",
+    items: [
+      {n:"สุกี้น้ำ / แห้งหมู / ไก่",p:35},
+      {n:"สุกี้น้ำ / แห้งหมูกรอบ / ปลาหมึก",p:40},
+      {n:"ผัดซีอิ้วหมู / ไก่ / หมูกรอบ",p:35},
+      {n:"เส้นใหญ่ราดหน้าหมู / ไก่ / หมูกรอบ",p:35},
+      {n:"เส้นใหญ่ราดหน้าทะเล / กุ้ง / ปลาหมึก",p:40},
+      {n:"ก๋วยเตี๋ยวตั๋วไก่ / หมู",p:35},
+      {n:"ผัดไทยหมูมัก / ไก่มัก",p:40},
+      {n:"ผัดไทยกุ้งเส้น / เส้นเล็กกุ้งสด",p:35},
+      {n:"มาม่าผัดหมู / ไก่ / หมูกรอบ",p:35},
+      {n:"มาม่าผัดขี้เมาหมู / ไก่",p:35},
+    ]
+  },
+  "ผัดพิเศษ": {
+    color: "#D4537E",
+    items: [
+      {n:"ผัดฉ่าปลาดุก / ปลาทอด / ไก่ทอด",p:35},
+      {n:"ผัดพริกสดหมู / ไก่ / หมูกรอบ",p:35},
+      {n:"ผัดขิงเครื่องในไก่ / หมู / ไก่",p:35},
+      {n:"หมูแซ่บ / ไก่แซ่บ (พริกสด)",p:35},
+      {n:"หมู / ไก่ทอดกระเทียมพริกไทย",p:35},
+      {n:"หมูกรอบ / ปลาหมึกทอดกระเทียม",p:35},
+      {n:"หมู / ไก่ทอดน้ำปลา",p:35},
+      {n:"หมูกรอบ / ปลาหมึกทอดน้ำปลา",p:40},
+      {n:"ผัดเปรี้ยวหวานหมู / ไก่",p:35},
+      {n:"ผัดเปรี้ยวหวานหมูกรอบ / ไก่ทอด / ปลาทอด",p:40},
+    ]
+  },
+  "มักกะโรนี / สปาเก็ตตี้": {
+    color: "#8B5CF6",
+    items: [
+      {n:"มักกะโรนีผัดซอสหมู / ไก่",p:35},
+      {n:"มักกะโรนีผัดซอสหมูกรอบ / ปลาหมึก / ไก่ทอด",p:40},
+      {n:"มักกะโรนีผัดซอสปลาทอด",p:40},
+      {n:"มักกะโรนีผัดขี้เมาหมู / ไก่ / หมูกรอบ",p:35},
+      {n:"สปาเก็ตตี้ซอสมะเขือเทศ",p:40},
+      {n:"สปาเก็ตตี้คาโบนาร่า",p:40},
+      {n:"สปาเก็ตตี้ซอสกุ้ง",p:40},
+    ]
+  },
+  "สามชั้น / หน่อไม้": {
+    color: "#639922",
+    items: [
+      {n:"สามชั้นทอดน้ำปลา / ไส้อ่อน",p:35},
+      {n:"สามชั้นทอดกระเทียม / ไส้อ่อน",p:40},
+      {n:"สามชั้นผัดพริกเผา",p:40},
+      {n:"สามชั้น / ไส้อ่อนผัดพริกเผา",p:40},
+      {n:"สามชั้นผัดเขียวหวาน",p:40},
+      {n:"หน่อไม้ผัดหมู / ไก่ / หมูกรอบ",p:35},
+    ]
+  },
+  "ไข่ / ต้มยำ": {
+    color: "#888780",
+    items: [
+      {n:"ไข่เค็มผัดหมู / ไก่",p:35},
+      {n:"ไข่เค็มผัดหมูกรอบ / ปลาหมึก / ไก่ทอด",p:40},
+      {n:"ต้มจืดผักกาดขาวเต้าหู้หมูสับ",p:40},
+      {n:"ต้มยำหมู / ไก่ / ปลากระป๋อง",p:40},
+      {n:"ต้มยำไข่เจียว / ไข่น้ำ",p:40},
+      {n:"ต้มยำปลาหมึก",p:40},
+      {n:"ต้มโป๊แตกทะเลรวม",p:40},
+      {n:"ต้มยำกุ้ง",p:40},
+      {n:"แกงส้มผักรวมปลา / กุ้ง",p:40},
+    ]
+  },
+  "ผัดกระหรี่ / พิเศษ": {
+    color: "#E24B4A",
+    items: [
+      {n:"ผัดผงกระหรี่หมู / ไก่",p:35},
+      {n:"ผัดผงกระหรี่หมูกรอบ / ปลาหมึก",p:40},
+      {n:"ผัดผงกระหรี่ปลาทอด / ไก่ทอด",p:40},
+      {n:"หมูสามชั้น / หมู / ไก่",p:35},
+      {n:"หมูกรอบ หมูสามชั้นคั่วพริกเกลือ",p:40},
+      {n:"ไข่คาว",p:6},
+      {n:"ไข่เจียว",p:10},
+    ]
+  },
+};
+
+/* ---- state ---- */
+let active = new Set(Object.keys(allMenus));
+let spinning = false;
+let angle = 0;
+let flatMenus = [], flatColors = [], flatCats = [];
+
+function buildFlat() {
+  flatMenus = []; flatColors = []; flatCats = [];
+  active.forEach(cat => {
+    allMenus[cat].items.forEach(item => {
+      flatMenus.push(item);
+      flatColors.push(allMenus[cat].color);
+      flatCats.push(cat);
+    });
+  });
+}
+
+/* ---- draw ---- */
+function hexToRgb(hex) {
+  const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+  return {r,g,b};
+}
+function darken(hex, amt=40) {
+  const {r,g,b} = hexToRgb(hex);
+  return `rgb(${Math.max(0,r-amt)},${Math.max(0,g-amt)},${Math.max(0,b-amt)})`;
+}
+
+function drawWheel(a) {
+  const canvas = document.getElementById('wheel');
+  const ctx = canvas.getContext('2d');
+  const cx = 160, cy = 160, r = 154;
+  ctx.clearRect(0,0,320,320);
+
+  if (!flatMenus.length) {
+    ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2);
+    ctx.fillStyle = '#1a1814'; ctx.fill();
+    ctx.fillStyle = '#6a6050'; ctx.font = '14px Sarabun,sans-serif';
+    ctx.textAlign = 'center'; ctx.fillText('เลือกหมวดหมู่ก่อน', cx, cy);
+    return;
+  }
+
+  const slice = (Math.PI*2) / flatMenus.length;
+  flatMenus.forEach((item, i) => {
+    const s = a + i*slice, e = s + slice;
+    ctx.beginPath(); ctx.moveTo(cx,cy);
+    ctx.arc(cx,cy,r,s,e); ctx.closePath();
+    const g = ctx.createRadialGradient(cx,cy,30,cx,cy,r);
+    g.addColorStop(0, darken(flatColors[i], 20));
+    g.addColorStop(1, flatColors[i]);
+    ctx.fillStyle = g; ctx.fill();
+    ctx.strokeStyle = 'rgba(15,14,11,0.6)'; ctx.lineWidth = 1.2; ctx.stroke();
+
+    ctx.save();
+    ctx.translate(cx,cy); ctx.rotate(s + slice/2);
+    ctx.textAlign = 'right'; ctx.fillStyle = 'rgba(255,255,255,0.92)';
+    const fs = flatMenus.length > 35 ? 7.5 : flatMenus.length > 25 ? 8.5 : flatMenus.length > 15 ? 10 : 11.5;
+    ctx.font = `${fs}px Sarabun,sans-serif`;
+    const maxLen = flatMenus.length > 30 ? 6 : flatMenus.length > 20 ? 8 : 10;
+    const name = item.n.length > maxLen ? item.n.slice(0,maxLen) + '…' : item.n;
+    ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 3;
+    ctx.fillText(name, r - 7, fs/2.5);
+    ctx.restore();
+  });
+
+  /* outer ring */
+  ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2);
+  ctx.strokeStyle = 'rgba(232,160,32,0.25)'; ctx.lineWidth = 3; ctx.stroke();
+
+  /* center cap */
+  ctx.beginPath(); ctx.arc(cx,cy,26,0,Math.PI*2);
+  ctx.fillStyle = '#0f0e0b'; ctx.fill();
+  ctx.strokeStyle = 'rgba(232,160,32,0.3)'; ctx.lineWidth = 1.5; ctx.stroke();
+}
+
+function getWinner(a) {
+  if (!flatMenus.length) return null;
+  const slice = (Math.PI*2) / flatMenus.length;
+  const norm = (((-a % (Math.PI*2)) + Math.PI*2) % (Math.PI*2));
+  const idx = Math.floor(norm / slice) % flatMenus.length;
+  return { item: flatMenus[idx], cat: flatCats[idx] };
+}
+
+/* ---- spin ---- */
+function doSpin() {
+  if (spinning || !flatMenus.length) return;
+  spinning = true;
+  document.getElementById('spinBtn').disabled = true;
+  document.getElementById('resultCard').className = 'result-card';
+  document.getElementById('resultCard').innerHTML = '<div class="result-idle">กำลังสุ่ม <span class="spinning-icon">⏳</span></div>';
+
+  const total = Math.PI*2*(7 + Math.random()*9) + Math.random()*Math.PI*2;
+  const dur = 4200, t0 = performance.now(), a0 = angle;
+
+  function ease(t) {
+    return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2,3)/2;
+  }
+
+  function frame(now) {
+    const t = Math.min((now-t0)/dur, 1);
+    angle = a0 + total * ease(t);
+    drawWheel(angle);
+    if (t < 1) { requestAnimationFrame(frame); return; }
+    spinning = false;
+    document.getElementById('spinBtn').disabled = false;
+    const w = getWinner(angle);
+    if (!w) return;
+    document.getElementById('resultCard').className = 'result-card has-result';
+    document.getElementById('resultCard').innerHTML = `
+      <div class="result-inner">
+        <div class="result-label">🎉 เมนูของคุณ</div>
+        <div class="result-name">${w.item.n}</div>
+        <div class="result-cat">${w.cat}</div>
+        <span class="result-price">${w.item.p} บาท</span>
+      </div>`;
+  }
+  requestAnimationFrame(frame);
+}
+
+/* ---- toast helper ---- */
+let toastTimer = null;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+/* ---- flash a button briefly ---- */
+function flashBtn(id, color = '#e8a020') {
+  const btn = document.getElementById(id);
+  btn.style.color = color;
+  btn.style.borderColor = 'rgba(232,160,32,0.4)';
+  setTimeout(() => { btn.style.color = ''; btn.style.borderColor = ''; }, 600);
+}
+
+/* ---- shuffle within categories (original) ---- */
+function shuffleMenus() {
+  Object.keys(allMenus).forEach(cat => {
+    const arr = allMenus[cat].items;
+    for (let i = arr.length-1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i+1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+  });
+  buildFlat(); drawWheel(angle); updateCount();
+  flashBtn('shuffleBtn');
+  showToast('🔀 สุ่มเรียงเมนูภายในหมวดใหม่แล้ว');
+}
+
+/* ---- cross-category shuffle ---- */
+// Collects all items from active categories, shuffles them globally,
+// then re-assigns colors from the original category pool (round-robin by cat),
+// so each item now wears a color from a different category.
+function crossShuffleMenus() {
+  // gather all active items with their original category info
+  let pool = [];
+  active.forEach(cat => {
+    allMenus[cat].items.forEach(item => {
+      pool.push({ item, origCat: cat });
+    });
+  });
+
+  // Fisher-Yates shuffle the whole pool
+  for (let i = pool.length-1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i+1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+
+  // Assign colors by cycling through the active category colors
+  // independently from the item order — this is what "crosses" categories
+  const catKeys = Array.from(active);
+  const colorCycle = pool.map((_, i) => allMenus[catKeys[i % catKeys.length]].color);
+
+  // Rebuild flat arrays directly from pool
+  flatMenus  = pool.map(p => p.item);
+  flatColors = colorCycle;
+  flatCats   = pool.map(p => p.origCat);  // keep original cat for result display
+
+  drawWheel(angle); updateCount();
+  flashBtn('crossShuffleBtn', '#e8a020');
+  showToast('🎲 สุ่มข้ามหมวดหมู่แล้ว สีในวงล้อจะปนกัน!');
+}
+
+/* ---- categories ---- */
+function renderCats() {
+  const list = document.getElementById('catList');
+  list.innerHTML = '';
+  Object.entries(allMenus).forEach(([cat, data]) => {
+    const isActive = active.has(cat);
+    const row = document.createElement('div');
+    row.className = 'cat-row' + (isActive ? ' active' : '');
+    row.innerHTML = `
+      <div class="cat-dot" style="background:${data.color}"></div>
+      <span class="cat-name">${cat}</span>
+      <span class="cat-count">${data.items.length}</span>
+      <svg class="cat-check" viewBox="0 0 16 16" aria-hidden="true">
+        <circle cx="8" cy="8" r="7"/>
+        <path d="M5 8.5l2 2 4-4"/>
+      </svg>`;
+    row.onclick = () => {
+      if (active.has(cat)) { if (active.size > 1) active.delete(cat); }
+      else active.add(cat);
+      buildFlat(); renderCats(); drawWheel(angle); updateCount();
+    };
+    list.appendChild(row);
+  });
+
+  const allOn = active.size === Object.keys(allMenus).length;
+  document.getElementById('toggleAll').textContent = allOn ? 'ยกเลิกทั้งหมด' : 'เลือกทั้งหมด';
+}
+
+function updateCount() {
+  const n = flatMenus.length;
+  document.getElementById('countPill').innerHTML = `<strong>${n}</strong> เมนูในวงล้อ`;
+}
+
+document.getElementById('toggleAll').onclick = () => {
+  const allOn = active.size === Object.keys(allMenus).length;
+  if (allOn) {
+    const first = Object.keys(allMenus)[0];
+    active = new Set([first]);
+  } else {
+    active = new Set(Object.keys(allMenus));
+  }
+  buildFlat(); renderCats(); drawWheel(angle); updateCount();
+};
+
+document.getElementById('spinBtn').onclick = doSpin;
+document.getElementById('centerBtn').onclick = doSpin;
+document.getElementById('shuffleBtn').onclick = shuffleMenus;
+document.getElementById('crossShuffleBtn').onclick = crossShuffleMenus;
+
+buildFlat();
+renderCats();
+drawWheel(angle);
+updateCount();
+</script>
+</body>
+</html>
